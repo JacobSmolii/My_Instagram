@@ -1,8 +1,10 @@
-import React, { useState } from 'react'
-import { Button } from '@material-ui/core'
-import { storage, db } from 'firebase';
+import React, { useState } from 'react';
+import Button from "@material-ui/core/Button";
+import {storage,db} from "./firebase";
+import firebase from "firebase";
+import './ImageUpload.css'
 
-function ImageUpload() {
+function ImageUpload({username}) {
 	const [image, setImage] = useState(null);
 	const [progress, setProgress] = useState(0);
 	const [caption, setCaption] = useState('');
@@ -16,7 +18,8 @@ function ImageUpload() {
 	const handleUpload = () => {
 		// next line, access the storage in firebase and get the reference to this photos
 		// and we are putting the image that we grabed
-		const uploadTask = storage.ref(`images/${image.name}`).put(image)
+		const uploadTask = storage.ref(`images/${image.name}`).put(image);
+
 		uploadTask.on(
 			"state_changed",
 			(snapshot) => {
@@ -25,18 +28,44 @@ function ImageUpload() {
 					(snapshot.bytesTransferred / snapshot.totalBytes) * 100
 				);
 				setProgress(progress)
+			},
+			(error) => {
+				// Error function...
+				console.log(error);
+				alert(error.message);
+			},
+			() => {
+				// complete function ...
+				storage
+					.ref("images")
+					.child(image.name)
+					.getDownloadURL()
+					.then(url => {
+						// post image inside db
+						db.collection('posts').add({
+							timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+							caption: caption,
+							imageUrl: url,
+							username: username
+						});
+
+						setProgress(0);
+						setCaption('');
+						setImage(null);
+					})
 			}
+
 		)
 
 	}
 
 	return (
-		<div>
-			abc
-			{/* I want to have ... */}
-			{/* Caption input */}
-			{/* file picker */}
-			{/* post button */}
+		<div className="imageUpload">
+			<progress
+				className="imageUploadProgress"
+				value={progress}
+				max="100"
+			/>
 
 			<input
 				type="text"
@@ -50,11 +79,13 @@ function ImageUpload() {
 			/>
 
 			<Button className="imageupload_button" onClick={handleUpload}>
-
+				Upload
 			</Button>
 
 		</div>
 	)
+
 }
 
 export default ImageUpload
+
